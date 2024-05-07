@@ -1,0 +1,29 @@
+[main]
+dir = "/tmp/cryptography"
+username = "login"
+password = "password"
+course = "Introduction to Cryptography (Summer 2024)"
+folders = [
+  "Recordings",
+  "Annotated Slides",
+  "Exercises",
+  [
+    "Material & Solutions for the Exercises",
+    [
+      "Exercise-02",
+    ],
+  ],
+  "Slides",
+]
+staged_folders_ids = [
+  "ilAdvSelListAnchorText_act_3465100_pref_3440725",
+  "ilAdvSelListAnchorText_act_3441176_pref_3440725",
+  "ilAdvSelListAnchorText_act_3471770_pref_3440725",
+  "ilAdvSelListAnchorText_act_3441175_pref_3440725",
+]
+staged_folders_xpaths = [
+  "//button[contains(.,'Slides')]",
+  "//button[contains(.,'Material a Solutions for the Exercises')]",
+  "//button[text()='Exercises']",
+  "//button[contains(.,'Annotated Slides')]",
+]

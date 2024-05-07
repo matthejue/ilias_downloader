@@ -1,0 +1,282 @@
+#!/home/areo/Documents/Studium/ilias_downloader/.virtualenv/bin/python
+
+import tomllib as toml
+import argparse
+import pickle
+import os
+import time
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import NoSuchElementException
+
+# parse path of toml file from command line
+argparser = argparse.ArgumentParser()
+argparser.add_argument(
+    "toml_file", nargs="?", help="path to toml file", default="./config.toml", type=str
+)
+args = argparser.parse_args()
+
+print("Using config file: " + args.toml_file)
+
+with open(args.toml_file, "rb") as f:
+    configs = toml.load(f)
+
+
+class Crypto:
+    def __init__(self):
+        # create path folder with all it's parent folders
+        if not os.path.exists(configs["main"]["dir"]):
+            os.makedirs(configs["main"]["dir"])
+        chrome_options = Options()
+        chrome_options.add_experimental_option(
+            "prefs",
+            {
+                "download.default_directory": configs["main"]["dir"],
+                "download.prompt_for_download": False,
+                "download.directory_upgrade": True,
+                "safebrowsing.enabled": True,
+                "plugins.always_open_pdf_externally": True,
+            },
+        )
+        self.driver = webdriver.Chrome(options=chrome_options)
+        self.driver.delete_all_cookies()
+        self.vars = {}
+
+    def login(self):
+        self.driver.get(
+            "https://ilias.uni-freiburg.de/ilias.php?baseClass=ilrepositorygui&reloadpublic=1&cmd=frameset&ref_id=1"
+        )
+        self.driver.set_window_size(629, 1036)
+        self.driver.find_element(By.CSS_SELECTOR, ".header-inner").click()
+        self.vars["window_handles"] = self.driver.window_handles
+        self.driver.find_element(
+            By.CSS_SELECTOR, ".ilc_text_block_StandardWhite > .ilc_text_inline_Strong"
+        ).click()
+        self.vars["win"] = self.wait_for_window(2000)
+        self.vars["root"] = self.driver.current_window_handle
+        self.driver.switch_to.window(self.vars["win"])
+        self.driver.find_element(By.CSS_SELECTOR, "p img").click()
+        self.driver.find_element(By.ID, "LoginForm_username").click()
+        self.driver.find_element(By.ID, "LoginForm_username").send_keys(
+            configs["main"]["username"]
+        )
+        self.driver.find_element(By.ID, "LoginForm_password").send_keys(
+            configs["main"]["password"]
+        )
+        self.driver.find_element(By.ID, "LoginForm_password").send_keys(Keys.ENTER)
+
+    def goto_course(self, course_name):
+        self.driver.find_element(
+            By.XPATH, "//span[contains(.,'Meine Kurse und Gruppen')]"
+        ).click()
+        self.driver.find_element(By.LINK_TEXT, course_name).click()
+
+    def wait_for_window(self, timeout=2):
+        time.sleep(round(timeout / 1000))
+        wh_now = self.driver.window_handles
+        wh_then = self.vars["window_handles"]
+        if len(wh_now) > len(wh_then):
+            return set(wh_now).difference(set(wh_then)).pop()
+
+    def check_folders(self, patterns, is_subfolder=False):
+        for pattern in patterns:
+            subfolders = []
+            if type(pattern) == list:
+                subfolders = pattern[1]
+                pattern = pattern[0]
+
+            # check if file exists
+            if (
+                os.path.exists(f"./{pattern}{'_sub' if is_subfolder else ''}.pkl")
+                and os.path.getsize(f"./{pattern}{'_sub' if is_subfolder else ''}.pkl")
+                != 0
+            ):
+                # Read the list from the file
+                with open(
+                    f"./{pattern}{'_sub' if is_subfolder else ''}.pkl", "rb"
+                ) as f:
+                    old_links = pickle.load(f)
+            else:
+                old_links = set()
+
+            self.driver.find_element(By.LINK_TEXT, pattern).click()
+            links = self.driver.find_elements(By.CLASS_NAME, "il_ContainerItemTitle")
+            links_no_duplicates = set(link.text for link in links)
+
+            print(f'Missing files in "{pattern}":')
+            new_links = links_no_duplicates.difference(old_links)
+            print(new_links)
+            answer = input(f'Download missing files in "{pattern}"? (y?)')
+            if answer == "y":
+                for link in new_links:
+                    if link in subfolders:
+                        self.check_folders([link], is_subfolder=True)
+                    else:
+                        self.driver.find_element(By.LINK_TEXT, link).click()
+
+                # Save the list to a file
+                with open(
+                    f"./{pattern}{'_sub' if is_subfolder else ''}.pkl", "wb"
+                ) as f:
+                    pickle.dump(links_no_duplicates, f)
+
+            if is_subfolder:
+                self.driver.back()
+            else:
+                self.driver.find_element(
+                    By.LINK_TEXT, configs["main"]["course"]
+                ).click()
+
+    def stage_folders(self, ids):
+        for id in ids:
+            self.driver.find_element(By.ID, id).click()
+            time.sleep(1)
+            self.driver.find_element(By.LINK_TEXT, "Download").click()
+            self.driver.find_element(By.LINK_TEXT, configs["main"]["course"]).click()
+
+    def download_staged_folders(self, xpaths):
+        self.driver.find_element(By.CSS_SELECTOR, ".glyphicon-bell").click()
+        self.driver.find_element(By.LINK_TEXT, "Background Tasks").click()
+        for xpath in xpaths:
+            self.driver.find_element(By.XPATH, xpath).click()
+
+    def download_directly_available_files(self, patterns):
+        for pattern in patterns:
+            self.driver.find_element(By.LINK_TEXT, pattern).click()
+
+    def check_everything_submissions(self, patterns):
+        for pattern in patterns:
+            submissionpattern = pattern[1]
+            pattern = pattern[0]
+            self.driver.find_element(By.LINK_TEXT, pattern).click()
+            elements = self.driver.find_elements(By.CLASS_NAME, "ilAssignmentHeader")
+            for element in elements:
+                if submissionpattern in element.text:
+                    if (
+                        os.path.exists(f"./{element.text}.pkl")
+                        and os.path.getsize(f"./{element.text}.pkl") != 0
+                    ):
+                        # Read the list from the file
+                        with open(f"./{element.text}.pkl", "rb") as f:
+                            old_links = pickle.load(f)
+                    else:
+                        old_links = set()
+
+                    element.click()
+                    time.sleep(1)
+                    links = self.driver.find_elements(By.LINK_TEXT, "Download")
+                    links_set = set(
+                        link.get_attribute("href").removeprefix(
+                            "https://ilias.uni-freiburg.de/"
+                        )
+                        for link in links
+                    )
+
+                    print(f'Missing files in "{element.text}":')
+                    new_links = links_set.difference(old_links)
+                    print(new_links)
+                    answer = input(f'Download missing files in "{element.text}"? (y?)')
+                    if answer == "y":
+                        for link in new_links:
+                            self.driver.find_element(
+                                # By.XPATH, f'//a[@href="{link}"]'
+                                By.CSS_SELECTOR,
+                                f'a[href="{link}"]',
+                            ).click()
+
+                        # Save the list to a file
+                        with open(f"./{element.text}.pkl", "wb") as f:
+                            pickle.dump(links_set, f)
+
+            self.driver.find_element(By.LINK_TEXT, configs["main"]["course"]).click()
+
+    def check_lectures_special_lecture_folders(self, patterns):
+        for pattern in patterns:
+            if (
+                os.path.exists(f"./{pattern}.pkl")
+                and os.path.getsize(f"./{pattern}.pkl") != 0
+            ):
+                # Read the list from the file
+                with open(f"./{pattern}.pkl", "rb") as f:
+                    old_links = pickle.load(f)
+            else:
+                old_links = set()
+
+            self.driver.find_element(By.LINK_TEXT, pattern).click()
+            links = self.driver.find_elements(By.LINK_TEXT, "Download")
+            links_set = set(
+                link.get_attribute("href").removeprefix(
+                    "https://ilias.uni-freiburg.de/"
+                )
+                for link in links
+            )
+
+            print(f'Missing files in "{pattern}":')
+            new_links = links_set.difference(old_links)
+            print(new_links)
+            answer = input(f'Download missing files in "{pattern}"? (y?)')
+            if answer == "y":
+                for link in new_links:
+                    self.driver.find_element(
+                        # By.XPATH, f'//a[@href="{link}"]'
+                        By.CSS_SELECTOR,
+                        f'a[href="{link}"]',
+                    ).click()
+
+                # Save the list to a file
+                with open(f"./{pattern}.pkl", "wb") as f:
+                    pickle.dump(links_set, f)
+
+            self.driver.find_element(By.LINK_TEXT, configs["main"]["course"]).click()
+
+    def finish(self):
+        input("Press Enter to finish the script")
+        self.driver.close()
+
+    def tasks(self):
+        self.login()
+        time.sleep(1.5)
+        self.goto_course(configs["main"]["course"])
+
+        if "folders" in configs["main"]:
+            answer = input("Check folders for new files? (y?)")
+            if answer == "y":
+                self.check_folders(configs["main"]["folders"])
+
+        if "staged_folders_ids" in configs["main"]:
+            answer = input("Download all folders completely as zip? (y?)")
+            if answer == "y":
+                self.stage_folders(configs["main"]["staged_folders_ids"])
+                self.download_staged_folders(configs["main"]["staged_folders_xpaths"])
+
+        if "directly_available_files" in configs["main"]:
+            answer = input("Download all directly avialable files? (y?)")
+            if answer == "y":
+                self.download_directly_available_files(
+                    configs["main"]["directly_available_files"]
+                )
+
+        if "submissions" in configs["main"]:
+            answer = input("Check everything from submissions? (y?)")
+            if answer == "y":
+                self.check_everything_submissions(configs["main"]["submissions"])
+
+        if "special_lecture_folders" in configs["main"]:
+            answer = input("Check all lectures from special lecture folders? (y?)")
+            if answer == "y":
+                self.check_lectures_special_lecture_folders(
+                    configs["main"]["special_lecture_folders"]
+                )
+
+        self.finish()
+
+
+if __name__ == "__main__":
+    c = Crypto()
+    c.tasks()

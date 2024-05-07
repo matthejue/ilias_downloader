@@ -1,0 +1,8 @@
+[main]
+dir = "/tmp/program_verification"
+username = "login"
+password = "password"
+course = "Program Verification (SS 2024)"
+directly_available_files = ["Lecture Slides"]
+submissions = [["Exercise Sheets", "Exercise"]]
+special_lecture_folders = ["Lecture Recordings"]
