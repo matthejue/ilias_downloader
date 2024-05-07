@@ -247,7 +247,7 @@ class Downloader:
 
     def tasks(self):
         self.login()
-        time.sleep(1.5)
+        time.sleep(2)
         self.goto_course(configs["main"]["course"])
 
         if "folders" in configs["main"]:
