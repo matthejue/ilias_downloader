@@ -1,0 +1,9 @@
+[main]
+dir = "/tmp/signal_processing"
+username = "username"
+password = "password"
+course = "Signal Processing 2024"
+folders = [
+  "Lectures",
+  ["Exercises", "all are folders"],
+]

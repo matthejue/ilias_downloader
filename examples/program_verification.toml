@@ -1,6 +1,6 @@
 [main]
 dir = "/tmp/program_verification"
-username = "login"
+username = "username"
 password = "password"
 course = "Program Verification (SS 2024)"
 directly_available_files = ["Lecture Slides"]

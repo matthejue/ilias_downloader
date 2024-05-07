@@ -115,7 +115,13 @@ class Downloader:
             answer = input(f'Download missing files in "{pattern}"? (y?)')
             if answer == "y":
                 for link in new_links:
-                    if link in subfolders:
+                    if (
+                        subfolders == "all are folders"
+                        or link in subfolders
+                        or not self.driver.find_element(
+                            By.LINK_TEXT, link
+                        ).get_attribute("target")
+                    ):
                         self.check_folders([link], is_subfolder=True)
                     else:
                         self.driver.find_element(By.LINK_TEXT, link).click()

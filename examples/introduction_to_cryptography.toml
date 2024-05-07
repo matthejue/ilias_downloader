@@ -1,6 +1,6 @@
 [main]
 dir = "/tmp/cryptography"
-username = "login"
+username = "username"
 password = "password"
 course = "Introduction to Cryptography (Summer 2024)"
 folders = [
