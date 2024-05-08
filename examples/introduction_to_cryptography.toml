@@ -7,11 +7,6 @@ folders = [
   "Recordings",
   "Annotated Slides",
   "Exercises",
-  [
-    "Material & Solutions for the Exercises",
-    [
-      "Exercise-02",
-    ],
-  ],
+  "Material & Solutions for the Exercises",
   "Slides",
 ]

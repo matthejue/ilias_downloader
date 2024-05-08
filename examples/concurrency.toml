@@ -16,6 +16,12 @@ directly_available_files = [
     "Partial recording",
     "download",
   ],
-  "Exercise solutions",
-  "Exercise/Ilias solutions",
+  [
+    "Exercise solutions",
+    "download",
+  ],
+  [
+    "Exercise/Ilias solutions",
+    "download",
+  ],
 ]
