@@ -1,0 +1,21 @@
+[main]
+dir = "/tmp/concurrency"
+username = "username"
+password = "password"
+course = "https://proglang.github.io/teaching/24ss/concurrency.html"
+directly_available_files = [
+  [
+    "Lecture notes",
+    "download",
+  ],
+  [
+    "Recording",
+    "download",
+  ],
+  [
+    "Partial recording",
+    "download",
+  ],
+  "Exercise solutions",
+  "Exercise/Ilias solutions",
+]
