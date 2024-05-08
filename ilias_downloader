@@ -109,12 +109,10 @@ class Downloader:
                 subfolders = pattern[1]
                 pattern = pattern[0]
 
-            old_links = self.deserialize(pattern, is_subfolder)
-
             self.driver.find_element(By.LINK_TEXT, pattern).click()
             links = self.driver.find_elements(By.CLASS_NAME, "il_ContainerItemTitle")
             links_no_duplicates = set(link.text for link in links)
-
+            old_links = self.deserialize(pattern, is_subfolder)
             print(f'Missing files in "{pattern}":')
             new_links = links_no_duplicates.difference(old_links)
             print(new_links)
@@ -124,9 +122,9 @@ class Downloader:
                     if (
                         subfolders == "all are folders"
                         or link in subfolders
-                        or not self.driver.find_element(
+                        or "target=file" not in self.driver.find_element(
                             By.LINK_TEXT, link
-                        ).get_attribute("target")
+                        ).get_attribute("href")
                     ):
                         self.check_folders([link], is_subfolder=True)
                     else:
@@ -196,7 +194,6 @@ class Downloader:
             for element in elements:
                 if submissionpattern in element.text:
                     old_links = self.deserialize(element.text)
-
                     element.click()
                     time.sleep(1)
                     links = self.driver.find_elements(By.LINK_TEXT, "Download")
