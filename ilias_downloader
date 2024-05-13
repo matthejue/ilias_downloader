@@ -21,13 +21,28 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument(
     "toml_file", nargs="?", help="path to toml file", default="./config.toml", type=str
 )
+argparser.add_argument(
+    "course_name", nargs="?", help="name of course to login", default="", type=str
+)
 args = argparser.parse_args()
 
 print("Using config file: " + args.toml_file)
 
+if os.path.exists("/home/areo/.config/ilias_downloader/config.toml"):
+    with open("/home/areo/.config/ilias_downloader/config.toml", "rb") as f:
+        main_configs = toml.load(f)
+else:
+    main_configs = {}
+
+if args.toml_file == "login":
+    for course in main_configs["main"]["courses"]:
+        if args.course_name in course:
+            args.toml_file = course
+            os.chdir(course[:course.rfind("/")])
+
+
 with open(args.toml_file, "rb") as f:
     configs = toml.load(f)
-
 
 class Downloader:
     def __init__(self):
@@ -272,6 +287,11 @@ class Downloader:
             self.login()
             time.sleep(2)
             self.goto_course(configs["main"]["course"])
+
+        if args.course_name:
+            answer = input("Exit script? (y?)")
+            if answer == "y":
+                exit(0)
 
         if "folders" in configs["main"]:
             answer = input("Check folders for new files? (y?)")
